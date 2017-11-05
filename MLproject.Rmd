@@ -1,0 +1,115 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Daniel Schmode"
+date: "1. November 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+```
+
+
+## Executive Summary
+
+We use the Weight Lifting Exercise Dataset to train a predictor which predictes the quality of an performed exercise. We partition the traing data set in a trainfg and a testing data set. 
+We evaluate the out of sample erro on the testing set and than aply to the validation dat set. Expected error rate is below 1%.
+
+## Used libraries
+
+We load:
+
+```{r, echo=FALSE}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(randomForest)
+```
+
+
+## Preparation
+
+First we read in the data.Since ther e are many emt fields which cannon be used to train we convert them to NA.
+
+```{r}
+pml   <- read.csv('./pml-training.csv', header=T,na.strings=c("", "NA"))
+```
+
+## Feature selection
+
+The first 7 colums do not contain feature data. Thus we remove them
+
+```{r}
+pml <- pml[-c(1:7)]
+```
+
+Many colums contain mostly NA or emty cells. We remove these:
+
+```{r}
+pml <- pml[,colSums(is.na(pml)) < 100]
+```
+
+## Data partitioning
+
+We split the traing data in a training and a testing dataset. We will read in the file with the testing data for later validation:
+
+```{r}
+set.seed(1)
+inTrain = createDataPartition(pml$classe, p = 3/4)[[1]]
+training = pml[ inTrain,]
+testing = pml[-inTrain,]
+```
+
+
+
+## Train predictor
+
+We apply random forrest with all covariants for training
+
+```{r}
+modRF<-train(classe ~ .,data=training,method="rf",na.action = na.exclude)
+```
+
+First we check the prediction on training data:
+
+```{r}
+training.pred<-predict(modRF,training)
+1-sum(training.pred==training$classe)/length(training$classe)
+```
+
+Out of training error is 0 which is perfect.
+
+Check on test set:
+
+```{r}
+testing.pred<-predict(modRF,testing)
+1-sum(testing.pred==testing$classe)/length(testing$classe)
+```
+
+Out of testing error is 0.005709625. Thus prediction works well. We assume the predictin erro to be velow 1%.
+
+Check the confusion matrix:
+
+```{r}
+confusionMatrix(testing.pred, testing$classe)
+```
+
+Also looks nice.
+
+## Evaluate on the validation data
+
+Read in the test data:
+```{r}
+validation <- read.csv('./pml-testing.csv', header=T)
+validation <- validation[-c(1:7)]
+```
+
+And apply the predictor
+
+```{r}
+validation.pred<-predict(modRF,validation)
+validation.pred
+```
